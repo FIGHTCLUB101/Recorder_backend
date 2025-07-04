@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import rrwebPlayer from 'rrweb-player';
@@ -8,11 +9,9 @@ export default function ReplayViewer() {
   const { sessionId } = useParams();
   const [session, setSession] = useState(null);
   const navigate = useNavigate();
-  const replayContainerRef = useRef(null);
 
   useEffect(() => {
     fetchSession();
-    // eslint-disable-next-line
   }, []);
 
   async function fetchSession() {
@@ -27,42 +26,46 @@ export default function ReplayViewer() {
 
       // Sort events by timestamp just in case
       const sortedEvents = data.events.sort((a, b) => a.timestamp - b.timestamp);
-      setSession({ ...data, events: sortedEvents });
+
+      setSession(data);
+
+      const container = document.getElementById('replayContainer');
+      if (container) {
+        container.innerHTML = ''; // clear previous replay
+        setTimeout(() => {
+          try {
+            new rrwebPlayer({
+              target: container,
+              props: {
+                events: sortedEvents,
+                showController: true,
+              },
+            });
+          } catch (err) {
+            console.error('Error initializing rrwebPlayer:', err);
+          }
+        }, 300);
+      } else {
+        console.error('Replay container not found.');
+      }
+
     } catch (err) {
       console.error('Error loading session replay:', err);
+
       if (err.response?.status === 403) alert('Forbidden');
       if (err.response?.status === 404) alert('Session not found');
+      
       // Optional: re-enable this after debugging
       // navigate('/dashboard');
     }
   }
-
-  // Initialize rrweb player only when session and container are ready
-  useEffect(() => {
-    if (session && replayContainerRef.current) {
-      replayContainerRef.current.innerHTML = '';
-      setTimeout(() => {
-        try {
-          new rrwebPlayer({
-            target: replayContainerRef.current,
-            props: {
-              events: session.events,
-              showController: true,
-            },
-          });
-        } catch (err) {
-          console.error('Error initializing rrwebPlayer:', err);
-        }
-      }, 300);
-    }
-  }, [session, replayContainerRef.current]);
 
   if (!session) return <div>Loading...</div>;
 
   return (
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-4">Replay Session: {sessionId}</h2>
-      <div ref={replayContainerRef} style={{ width: '100%', height: '600px' }} className="mb-6 border rounded" />
+      <div id="replayContainer" style={{ width: '100%', height: '600px' }} className="mb-6 border rounded" />
 
       <div className="bg-gray-100 p-4 rounded shadow">
         <h3 className="text-lg font-semibold mb-2">Tags & Notes</h3>
