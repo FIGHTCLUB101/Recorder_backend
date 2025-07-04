@@ -9,42 +9,48 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [darkMode, setDarkMode] = useState(false);
   const [loading, setLoading] = useState(true); // Add loading state
+  const [totalSessions, setTotalSessions] = useState(0);
   const sessionsPerPage = 5;
 
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
 
   useEffect(() => {
-    fetchSessions();
-  }, []);
+    fetchSessions(currentPage);
+    // eslint-disable-next-line
+  }, [currentPage]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
 
-  async function fetchSessions() {
-    setLoading(true); // Set loading true before fetch
+  async function fetchSessions(page = 1) {
+    setLoading(true);
     try {
-      const res = await api.getSessions();
-      setSessions(res.data.sessions);
+      const res = await api.getSessions({ page, pageSize: sessionsPerPage });
+      // Defensive sort in frontend
+      const sorted = [...res.data.sessions].sort((a, b) => {
+        const aEnd = a.endTime ? new Date(a.endTime).getTime() : 0;
+        const bEnd = b.endTime ? new Date(b.endTime).getTime() : 0;
+        if (bEnd !== aEnd) return bEnd - aEnd;
+        const aStart = a.startTime ? new Date(a.startTime).getTime() : 0;
+        const bStart = b.startTime ? new Date(b.startTime).getTime() : 0;
+        return bStart - aStart;
+      });
+      setSessions(sorted);
+      setTotalSessions(res.data.total);
     } catch (err) {
       console.error(err);
       if (err.response?.status === 401) logout();
     } finally {
-      setLoading(false); // Set loading false after fetch
+      setLoading(false);
     }
   }
 
-  const filteredSessions = sessions.filter(s =>
-    s._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Remove currentSessions, use sessions directly
+  // const currentSessions = sessions;
 
-  const totalPages = Math.ceil(filteredSessions.length / sessionsPerPage);
-  const currentSessions = filteredSessions.slice(
-    (currentPage - 1) * sessionsPerPage,
-    currentPage * sessionsPerPage
-  );
+  const totalPages = Math.ceil(totalSessions / sessionsPerPage);
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:via-blue-900 dark:to-slate-800 text-gray-900 dark:text-white min-h-screen flex">
@@ -141,7 +147,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Sessions</p>
-                <p className="text-2xl font-bold text-slate-800 dark:text-white">{sessions.length}</p>
+                <p className="text-2xl font-bold text-slate-800 dark:text-white">{totalSessions}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,7 +175,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Filtered Results</p>
-                <p className="text-2xl font-bold text-slate-800 dark:text-white">{filteredSessions.length}</p>
+                <p className="text-2xl font-bold text-slate-800 dark:text-white">{sessions.length}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +212,7 @@ export default function Dashboard() {
                       </div>
                     </td>
                   </tr>
-                ) : currentSessions.length === 0 ? (
+                ) : sessions.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
@@ -219,7 +225,7 @@ export default function Dashboard() {
                     </td>
                   </tr>
                 ) : (
-                  currentSessions.map((s, index) => (
+                  sessions.map((s, index) => (
                     <tr key={s._id} className={`${index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50 dark:bg-slate-750'} hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-150`}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">

@@ -7,7 +7,8 @@ const {
   listSessions,
   getSession,
   updateSession,
-  deleteSession
+  deleteSession,
+  endSession
 } = require('../controllers/sessionController');
 const { authenticateJWT } = require('../middleware/authMiddleware');
 
@@ -17,4 +18,5 @@ router.get('/', listSessions);
 router.get('/:id', getSession);
 router.put('/:id', updateSession);
 router.delete('/:id', deleteSession);
+router.post('/:id/end', endSession);
 module.exports = router;

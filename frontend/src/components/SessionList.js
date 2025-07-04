@@ -8,12 +8,23 @@ const SessionList = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const sessionsPerPage = 5;
 
   useEffect(() => {
     const fetchSessions = async () => {
       try {
         const res = await api.get("/sessions");
-        setSessions(res.data);
+        // Sort sessions by endTime (desc), then startTime (desc) in frontend as a fallback
+        const sorted = [...res.data].sort((a, b) => {
+          const aEnd = a.endTime ? new Date(a.endTime).getTime() : 0;
+          const bEnd = b.endTime ? new Date(b.endTime).getTime() : 0;
+          if (bEnd !== aEnd) return bEnd - aEnd;
+          const aStart = a.startTime ? new Date(a.startTime).getTime() : 0;
+          const bStart = b.startTime ? new Date(b.startTime).getTime() : 0;
+          return bStart - aStart;
+        });
+        setSessions(sorted);
       } catch (err) {
         setError("Failed to load sessions.");
       } finally {
@@ -24,6 +35,13 @@ const SessionList = () => {
     fetchSessions();
   }, [token]);
 
+  // Pagination logic
+  const totalPages = Math.ceil(sessions.length / sessionsPerPage);
+  const paginatedSessions = sessions.slice(
+    (currentPage - 1) * sessionsPerPage,
+    currentPage * sessionsPerPage
+  );
+
   if (loading) return <p>Loading sessions...</p>;
   if (error) return <p>{error}</p>;
 
@@ -33,8 +51,9 @@ const SessionList = () => {
       {sessions.length === 0 ? (
         <p>No sessions found.</p>
       ) : (
+        <>
         <ul className="space-y-4">
-          {sessions.map((session) => (
+          {paginatedSessions.map((session) => (
             <li key={session._id} className="border p-4 rounded-lg shadow">
               <p className="text-sm text-gray-600">
                 <strong>Started:</strong>{" "}
@@ -63,6 +82,35 @@ const SessionList = () => {
             </li>
           ))}
         </ul>
+        {/* Pagination controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-4 space-x-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 rounded bg-gray-200 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1 rounded ${currentPage === i + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 rounded bg-gray-200 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

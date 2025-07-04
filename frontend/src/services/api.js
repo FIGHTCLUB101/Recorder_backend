@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -21,11 +20,15 @@ const logout = () => axiosInstance.post('/auth/logout');
 
 // Session data
 const saveSession = (sessionData) => axiosInstance.post('/sessions', sessionData);
-const getSessions = () => axiosInstance.get('/sessions');
+// Accepts params: { page, pageSize }
+const getSessions = (params = {}) => axiosInstance.get('/sessions', { params });
 const getSessionById = (sessionId) => axiosInstance.get(`/sessions/${sessionId}`);
 
 // Current user
 const getCurrentUser = () => axiosInstance.get('/user/me');
+
+// End a session
+const endSession = (sessionId) => axiosInstance.post(`/sessions/${sessionId}/end`);
 
 // Final API object
 const apiService = {
@@ -38,6 +41,7 @@ const apiService = {
   getCurrentUser,
   createSession,
   saveSessionChunk,
+  endSession,
   post: axiosInstance.post,
   get: axiosInstance.get,
   put: axiosInstance.put,

@@ -60,6 +60,15 @@ export default function Recorder() {
     if (stopRef.current) stopRef.current();
     clearInterval(intervalRef.current);
     await flushEvents();
+    // Explicitly end the session in the backend
+    if (sessionIdRef.current) {
+      try {
+        await api.endSession(sessionIdRef.current);
+        console.log('[Recorder] Session ended in backend');
+      } catch (err) {
+        console.error('[Recorder] Error ending session in backend:', err);
+      }
+    }
     setStatus('stopped');
     console.log('[Recorder] Stopped recording');
     navigate('/dashboard');

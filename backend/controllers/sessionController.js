@@ -46,10 +46,21 @@ exports.uploadChunk = async (req, res) => {
   }
 };
 
+// GET /api/sessions?page=1&pageSize=10
 exports.listSessions = async (req, res) => {
   try {
-    const sessions = await Session.find({}).sort({ createdAt: -1 });
-    res.status(200).json({ sessions });
+    // Parse pagination params
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || 10;
+    const skip = (page - 1) * pageSize;
+
+    // Sort by endTime descending, then startTime descending as fallback
+    const sessions = await Session.find({})
+      .sort({ endTime: -1, startTime: -1 })
+      .skip(skip)
+      .limit(pageSize);
+    const total = await Session.countDocuments({});
+    res.status(200).json({ sessions, total });
   } catch (err) {
     res.status(500).json({ message: 'Error fetching sessions', error: err.toString() });
   }
@@ -106,5 +117,18 @@ exports.deleteSession = async (req, res) => {
     res.status(200).json({ message: 'Session deleted' });
   } catch (err) {
     res.status(500).json({ message: 'Error deleting session', error: err });
+  }
+};
+
+// Mark session as ended
+exports.endSession = async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+    session.endTime = new Date();
+    await session.save();
+    res.status(200).json({ message: 'Session ended' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error ending session', error: err.message });
   }
 };
